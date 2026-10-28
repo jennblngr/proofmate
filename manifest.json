@@ -1,0 +1,39 @@
+{
+  "manifest_version": 3,
+  "name": "Proofmate",
+  "version": "0.1.0",
+  "description": "Relève tes erreurs d'anglais dans les champs de texte et explique pourquoi, avec une correction.",
+  "permissions": ["storage"],
+  "host_permissions": ["https://api.anthropic.com/*"],
+  "background": {
+    "service_worker": "background.js",
+    "scripts": ["background.js"]
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"],
+      "all_frames": true,
+      "run_at": "document_idle"
+    }
+  ],
+  "action": {
+    "default_title": "Proofmate : réglages"
+  },
+  "options_ui": {
+    "page": "options.html",
+    "open_in_tab": true
+  },
+  "commands": {
+    "check-field": {
+      "suggested_key": { "default": "Alt+Shift+K" },
+      "description": "Vérifier le champ actif"
+    }
+  },
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "proofmate@local",
+      "strict_min_version": "121.0"
+    }
+  }
+}

@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Proofmate : réglages</title>
+  <style>
+    :root {
+      --bg: #f5f5f7; --card: #ffffff; --fg: #1d1d1f; --muted: #6e6e73;
+      --border: #d2d2d7; --accent: #4f46e5; --accent-fg: #ffffff; --ok: #2e7d32;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #111114; --card: #1f1f23; --fg: #f2f2f7; --muted: #a1a1aa;
+        --border: #3a3a40; --accent: #818cf8; --accent-fg: #111114; --ok: #a5d6a7;
+      }
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; padding: 40px 16px; background: var(--bg); color: var(--fg);
+      font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
+    }
+    main { max-width: 520px; margin: 0 auto; }
+    h1 { font-size: 24px; margin: 0 0 4px; }
+    .lead { color: var(--muted); margin: 0 0 24px; }
+    form { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 20px; }
+    label { display: block; font-weight: 600; margin: 0 0 6px; }
+    .field { margin-bottom: 18px; }
+    input, select {
+      width: 100%; padding: 8px 10px; font: inherit; color: var(--fg);
+      background: var(--bg); border: 1px solid var(--border); border-radius: 8px;
+    }
+    .hint { font-size: 13px; color: var(--muted); margin: 6px 0 0; }
+    a { color: var(--accent); }
+    .actions { display: flex; align-items: center; gap: 12px; }
+    button {
+      padding: 8px 18px; font: inherit; font-weight: 600; cursor: pointer;
+      background: var(--accent); color: var(--accent-fg); border: none; border-radius: 8px;
+    }
+    #status { color: var(--ok); font-size: 14px; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Proofmate</h1>
+    <p class="lead">Clique sur « Vérifier » dans un champ de texte, ou utilise Alt+Shift+K.</p>
+    <form id="settings">
+      <div class="field">
+        <label for="apiKey">Clé API Anthropic</label>
+        <input id="apiKey" type="password" autocomplete="off" spellcheck="false" placeholder="sk-ant-…">
+        <p class="hint">Crée-la sur <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener">console.anthropic.com</a>. Elle reste stockée localement dans le navigateur.</p>
+      </div>
+      <div class="field">
+        <label for="model">Modèle</label>
+        <input id="model" type="text" spellcheck="false">
+        <p class="hint">Par défaut : claude-haiku-5-5 (rapide et peu cher). claude-sonnet-5-5 est plus fin, mais plus lent.</p>
+      </div>
+      <div class="field">
+        <label for="explanationLanguage">Langue des explications</label>
+        <select id="explanationLanguage">
+          <option value="French">Français</option>
+          <option value="English">Anglais</option>
+        </select>
+      </div>
+      <div class="actions">
+        <button type="submit">Enregistrer</button>
+        <span id="status" role="status"></span>
+      </div>
+    </form>
+  </main>
+  <script src="options.js"></script>
+</body>
+</html>
