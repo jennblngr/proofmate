@@ -14,13 +14,17 @@
   // At least two words containing letters: skips card numbers, dates, amounts, codes…
   const PROSE = /\p{L}{2,}.*\s.*\p{L}{2,}/su;
   const CARD_NUMBER = /\b\d(?:[ -]?\d){12,18}\b/g;
+  // Display order of the groups in the panel: errors first, optional style suggestions last.
   const CATEGORY_LABELS = {
-    spelling: "Orthographe",
     grammar: "Grammaire",
+    spelling: "Orthographe",
     punctuation: "Ponctuation",
     word_choice: "Choix du mot",
     phrasing: "Tournure",
+    style: "Style",
   };
+  const CATEGORY_ORDER = Object.keys(CATEGORY_LABELS);
+  const isError = (issue) => issue.category !== "style";
 
   const STYLES = `
     :host { all: initial; }
@@ -28,6 +32,8 @@
     .trigger, .panel {
       --bg: #ffffff; --fg: #1d1d1f; --muted: #6e6e73; --border: #d2d2d7;
       --accent: #4f46e5; --accent-fg: #ffffff; --del: #c62828; --ins: #2e7d32; --hover: #f2f2f7;
+      --cat-grammar: #d32f2f; --cat-spelling: #e65100; --cat-punctuation: #b28704;
+      --cat-word_choice: #7b1fa2; --cat-phrasing: #1565c0; --cat-style: #00897b;
       font: 13px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif;
       color: var(--fg);
     }
@@ -35,6 +41,8 @@
       .trigger, .panel {
         --bg: #1f1f23; --fg: #f2f2f7; --muted: #a1a1aa; --border: #3a3a40;
         --accent: #818cf8; --accent-fg: #111114; --del: #ef9a9a; --ins: #a5d6a7; --hover: #2a2a30;
+        --cat-grammar: #ef9a9a; --cat-spelling: #ffb74d; --cat-punctuation: #fff176;
+        --cat-word_choice: #ce93d8; --cat-phrasing: #90caf9; --cat-style: #80cbc4;
       }
     }
     [hidden] { display: none !important; }
@@ -59,16 +67,17 @@
     .body { overflow-y: auto; padding: 10px 12px; }
     .status, .empty, .error { margin: 4px 0; }
     .error { color: var(--del); }
-    .issues { list-style: none; margin: 0; padding: 0; }
-    .issue { padding: 10px 0; border-bottom: 1px solid var(--border); }
-    .issue:first-child { padding-top: 0; }
-    .issue:last-child { border-bottom: none; }
-    .issue.applied { opacity: .5; }
-    .badge {
-      display: inline-block; padding: 1px 7px; border-radius: 999px; font-size: 11px; font-weight: 600;
-      background: var(--hover); color: var(--muted);
+    .group + .group { margin-top: 14px; }
+    .group-title {
+      display: flex; align-items: center; gap: 6px; margin: 0 0 2px;
+      font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--muted);
     }
-    .diff { margin: 6px 0 4px; }
+    .group-title::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--dot); }
+    .group-hint { font-weight: 400; text-transform: none; letter-spacing: 0; }
+    .issues { list-style: none; margin: 0; padding: 0; }
+    .issue { padding: 8px 0 10px 10px; border-left: 2px solid var(--dot); margin-top: 6px; }
+    .issue.applied { opacity: .5; }
+    .diff { margin: 0 0 4px; }
     del { color: var(--del); }
     ins { color: var(--ins); text-decoration: none; font-weight: 600; }
     .explanation { margin: 0 0 8px; color: var(--muted); }
@@ -234,20 +243,34 @@
       renderPanel(`<p class="empty">Aucune erreur trouvée.</p>`);
       return;
     }
-    const items = currentIssues
-      .map(
-        (issue, index) => `
-        <li class="issue" data-index="${index}">
-          <span class="badge">${escapeHtml(CATEGORY_LABELS[issue.category] || issue.category)}</span>
-          <p class="diff"><del>${escapeHtml(issue.original)}</del> → <ins>${escapeHtml(issue.correction)}</ins></p>
-          <p class="explanation">${escapeHtml(issue.explanation)}</p>
-          <button type="button" data-action="apply" data-index="${index}">Appliquer</button>
-        </li>`,
-      )
-      .join("");
+    const groups = CATEGORY_ORDER.map((category) => {
+      const items = currentIssues
+        .map((issue, index) => ({ issue, index }))
+        .filter(({ issue }) => issue.category === category);
+      if (!items.length) return "";
+      const hint = category === "style" ? ` <span class="group-hint">· suggestions facultatives</span>` : "";
+      const list = items
+        .map(
+          ({ issue, index }) => `
+          <li class="issue" data-index="${index}">
+            <p class="diff"><del>${escapeHtml(issue.original)}</del> → <ins>${escapeHtml(issue.correction)}</ins></p>
+            <p class="explanation">${escapeHtml(issue.explanation)}</p>
+            <button type="button" data-action="apply" data-index="${index}">Appliquer</button>
+          </li>`,
+        )
+        .join("");
+      return `
+        <section class="group" style="--dot: var(--cat-${category})">
+          <h3 class="group-title">${CATEGORY_LABELS[category]} (${items.length})${hint}</h3>
+          <ul class="issues">${list}</ul>
+        </section>`;
+    }).join("");
+
+    // "Tout corriger" only applies real errors; style suggestions stay one by one.
+    const errorCount = currentIssues.filter(isError).length;
     renderPanel(
-      `<ul class="issues">${items}</ul>`,
-      `<button type="button" data-action="apply-all">Tout corriger (${currentIssues.length})</button>`,
+      groups,
+      errorCount ? `<button type="button" data-action="apply-all">Tout corriger (${errorCount})</button>` : "",
     );
   }
 
@@ -269,7 +292,7 @@
         applyIssue(Number(target.dataset.index));
         break;
       case "apply-all":
-        currentIssues.forEach((issue, index) => !issue.done && applyIssue(index));
+        currentIssues.forEach((issue, index) => !issue.done && isError(issue) && applyIssue(index));
         break;
       case "open-options":
         chrome.runtime.sendMessage({ type: "proofmate:open-options" });
@@ -294,8 +317,9 @@
       button.title = "Ce passage a changé depuis la vérification.";
     }
 
-    const remaining = currentIssues.filter((i) => !i.done).length;
     const applyAll = ui.panel.querySelector('[data-action="apply-all"]');
+    if (!applyAll) return;
+    const remaining = currentIssues.filter((i) => !i.done && isError(i)).length;
     applyAll.textContent = `Tout corriger (${remaining})`;
     applyAll.disabled = remaining === 0;
   }

@@ -1,6 +1,6 @@
 const DEFAULT_SETTINGS = {
   apiKey: "",
-  model: "claude-haiku-5-5",
+  model: "claude-sonnet-5-5",
   explanationLanguage: "French",
 };
 
