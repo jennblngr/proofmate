@@ -46,7 +46,8 @@ Categories:
 
 Rules:
 - Only report issues you are certain about. Fewer, correct issues are better than many doubtful ones. Never report text that is already correct and natural. If the text is correct, return an empty list.
-- One issue per entry. When a passage has several problems, report each one separately, with spans that do not overlap.
+- One issue per entry. When a passage has several problems, report each one separately, with spans that do not overlap. A punctuation fix is always its own entry, never folded into a phrasing or grammar fix.
+- Keep punctuation spans minimal. For a comma splice like "I agree with you, it's interesting", report only ", it's" → ". It's", not the whole sentence.
 - Ignore text that is not in English, proper nouns, code and URLs.
 
 For each issue:
