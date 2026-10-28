@@ -15,16 +15,8 @@
   // At least two words containing letters: skips card numbers, dates, amounts, codes…
   const PROSE = /\p{L}{2,}.*\s.*\p{L}{2,}/su;
   const CARD_NUMBER = /\b\d(?:[ -]?\d){12,18}\b/g;
-  // Display order of the groups in the panel: errors first, optional style suggestions last.
-  const CATEGORY_LABELS = {
-    grammar: "Grammaire",
-    spelling: "Orthographe",
-    punctuation: "Ponctuation",
-    word_choice: "Choix du mot",
-    phrasing: "Tournure",
-    style: "Style",
-  };
-  const CATEGORY_ORDER = Object.keys(CATEGORY_LABELS);
+  // Labels, colours and display order come from categories.js.
+  const CATEGORY_ORDER = Object.keys(PROOFMATE_CATEGORIES);
   const isError = (issue) => issue.category !== "style";
 
   // Styles copied from a textarea/input onto the hidden mirror used to measure text positions.
@@ -41,15 +33,13 @@
       all: initial;
       --bg: #ffffff; --fg: #1d1d1f; --muted: #6e6e73; --border: #d2d2d7;
       --accent: #4f46e5; --accent-fg: #ffffff; --del: #c62828; --ins: #2e7d32; --hover: #f2f2f7;
-      --cat-grammar: #d32f2f; --cat-spelling: #e65100; --cat-punctuation: #b28704;
-      --cat-word_choice: #7b1fa2; --cat-phrasing: #1565c0; --cat-style: #00897b;
+      ${proofmateCategoryVars("light")}
     }
     @media (prefers-color-scheme: dark) {
       :host {
         --bg: #1f1f23; --fg: #f2f2f7; --muted: #a1a1aa; --border: #3a3a40;
         --accent: #818cf8; --accent-fg: #111114; --del: #ef9a9a; --ins: #a5d6a7; --hover: #2a2a30;
-        --cat-grammar: #ef9a9a; --cat-spelling: #ffb74d; --cat-punctuation: #fff176;
-        --cat-word_choice: #ce93d8; --cat-phrasing: #90caf9; --cat-style: #80cbc4;
+        ${proofmateCategoryVars("dark")}
       }
     }
     * { box-sizing: border-box; }
@@ -87,7 +77,9 @@
       display: flex; align-items: center; justify-content: space-between;
       padding: 8px 12px; border-bottom: 1px solid var(--border);
     }
-    .title { font-weight: 700; }
+    .title { font-weight: 700; margin-right: auto; }
+    .history-link { border: none; background: none; color: var(--accent); font-size: 12px; padding: 0 10px 0 0; }
+    .history-link:hover { text-decoration: underline; }
     .close { border: none; background: none; color: var(--muted); font-size: 18px; line-height: 1; padding: 0 2px; }
     .body { overflow-y: auto; padding: 10px 12px; }
     .status, .empty, .error { margin: 4px 0; }
@@ -425,6 +417,7 @@
     panel.innerHTML = `
       <header>
         <span class="title">Proofmate</span>
+        <button class="history-link" type="button" data-action="open-history">Historique</button>
         <button class="close" type="button" data-action="close" aria-label="Fermer">×</button>
       </header>
       <div class="body">${bodyHtml}</div>
@@ -460,7 +453,7 @@
         .join("");
       return `
         <section class="group cat-${category}">
-          <h3 class="group-title">${CATEGORY_LABELS[category]} (${items.length})${hint}</h3>
+          <h3 class="group-title">${PROOFMATE_CATEGORIES[category].label} (${items.length})${hint}</h3>
           <ul class="issues">${list}</ul>
         </section>`;
     }).join("");
@@ -507,6 +500,9 @@
         break;
       case "open-options":
         chrome.runtime.sendMessage({ type: "proofmate:open-options" });
+        break;
+      case "open-history":
+        chrome.runtime.sendMessage({ type: "proofmate:open-history" });
         break;
     }
   }

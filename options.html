@@ -30,6 +30,8 @@
       width: 100%; padding: 8px 10px; font: inherit; color: var(--fg);
       background: var(--bg); border: 1px solid var(--border); border-radius: 8px;
     }
+    .checkbox { display: flex; align-items: center; gap: 8px; }
+    .checkbox input { width: auto; margin: 0; }
     .hint { font-size: 13px; color: var(--muted); margin: 6px 0 0; }
     a { color: var(--accent); }
     .actions { display: flex; align-items: center; gap: 12px; }
@@ -61,6 +63,10 @@
           <option value="French">Français</option>
           <option value="English">Anglais</option>
         </select>
+      </div>
+      <div class="field">
+        <label class="checkbox"><input id="historyEnabled" type="checkbox"> Garder un historique de mes erreurs</label>
+        <p class="hint">Les passages relevés et leurs explications sont stockés localement, dans le navigateur. <a href="history.html">Voir l'historique</a></p>
       </div>
       <div class="actions">
         <button type="submit">Enregistrer</button>
