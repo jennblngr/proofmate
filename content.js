@@ -603,17 +603,15 @@
 
   // --- Events --------------------------------------------------------------
 
-  document.addEventListener(
-    "focusin",
-    (event) => {
-      const field = findEditable(event.composedPath()[0]);
-      if (!field) return;
-      activeField = field;
-      ensureUI();
-      positionTrigger();
-    },
-    true,
-  );
+  function adoptField(el) {
+    const field = findEditable(el);
+    if (!field) return;
+    activeField = field;
+    ensureUI();
+    positionTrigger();
+  }
+
+  document.addEventListener("focusin", (event) => adoptField(event.composedPath()[0]), true);
 
   document.addEventListener(
     "focusout",
@@ -627,7 +625,15 @@
     true,
   );
 
-  document.addEventListener("input", queueReposition, true);
+  // Some apps (GitLab…) focus the field before we see it: pick it up on typing too.
+  document.addEventListener(
+    "input",
+    (event) => {
+      if (!activeField) adoptField(event.composedPath()[0]);
+      queueReposition();
+    },
+    true,
+  );
   document.addEventListener("scroll", queueReposition, { capture: true, passive: true });
   window.addEventListener("resize", queueReposition);
 
@@ -665,8 +671,8 @@
 
   // Keyboard shortcut (Alt+Shift+K), relayed by the background script to every frame.
   chrome.runtime.onMessage.addListener((message) => {
-    if (message?.type === "proofmate:trigger" && activeField && document.hasFocus()) {
-      runCheck(activeField);
-    }
+    if (message?.type !== "proofmate:trigger" || !document.hasFocus()) return;
+    if (!activeField) adoptField(deepActiveElement());
+    if (activeField) runCheck(activeField);
   });
 })();
