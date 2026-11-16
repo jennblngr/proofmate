@@ -59,6 +59,7 @@ Rules:
 - One issue per entry. When a passage has several problems, report each one separately, with spans that do not overlap. A punctuation fix is always its own entry, never folded into a phrasing or grammar fix.
 - Keep punctuation spans minimal. For a comma splice like "I agree with you, it's interesting", report only ", it's" → ". It's", not the whole sentence.
 - Ignore text that is not in English, proper nouns, code and URLs.
+- A sentence that ends with an emoji, an emoji shortcode like ":relaxed:" or an emoticon like ":)" needs no period: never report a missing period before or after it. Report other punctuation problems as usual.
 
 For each issue:
 - original: the shortest exact substring of the text that contains the problem, copied character for character, usually 1 to 5 words. Add neighbouring words only if needed for it to occur once in the text.
@@ -94,6 +95,21 @@ async function recordHistory(history, issues) {
     }));
   if (!fresh.length) return;
   await chrome.storage.local.set({ history: [...history, ...fresh].slice(-HISTORY_LIMIT) });
+}
+
+// An emoji or a shortcode like ":relaxed:" closing the span.
+const TRAILING_EMOJI =
+  /^(.*?)\s*((?:\p{Extended_Pictographic}[\p{Extended_Pictographic}\p{Emoji_Modifier}\uFE0F\u200D]*|:[a-z0-9_+-]+:)+)$/isu;
+
+// The author ends sentences with an emoji and no period, on purpose. The prompt says so; this
+// catches the cases where the model still asks for a period right before or after the emoji.
+function isPeriodNextToEmoji({ original, correction }) {
+  const match = original.trim().match(TRAILING_EMOJI);
+  if (!match) return false;
+  const [, body, emoji] = match;
+  const compact = (value) => value.replace(/\s+/g, "");
+  const fixed = compact(correction);
+  return fixed === compact(`${body}${emoji}.`) || fixed === compact(`${body}.${emoji}`);
 }
 
 class ProofmateError extends Error {
@@ -154,7 +170,11 @@ async function checkText(text) {
   const { issues } = JSON.parse(textBlock.text);
   // Drop anything the content script could not locate and replace in the field.
   const usable = issues.filter(
-    (issue) => issue.original && issue.original !== issue.correction && text.includes(issue.original),
+    (issue) =>
+      issue.original &&
+      issue.original !== issue.correction &&
+      text.includes(issue.original) &&
+      !isPeriodNextToEmoji(issue),
   );
   if (historyEnabled) await recordHistory(history, usable);
   return { issues: usable };
