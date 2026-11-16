@@ -95,6 +95,7 @@
     .issue { padding: 8px 6px 10px 10px; border-left: 2px solid var(--dot); margin-top: 6px; border-radius: 0 6px 6px 0; }
     .issue.focused { background: var(--hover); }
     .issue.applied { opacity: .5; }
+    .body button.dismiss { margin-left: 4px; border-color: transparent; color: var(--muted); }
     .diff { margin: 0 0 4px; }
     del { color: var(--del); }
     ins { color: var(--ins); text-decoration: none; font-weight: 600; }
@@ -440,14 +441,15 @@
       const hint = category === "style" ? ` <span class="group-hint">· suggestions facultatives</span>` : "";
       const list = items
         .map(({ issue, index }) => {
-          const button = issue.done
-            ? `<button type="button" disabled>Traité</button>`
-            : `<button type="button" data-action="apply" data-index="${index}">Appliquer</button>`;
+          const buttons = issue.done
+            ? `<button type="button" disabled>${issue.dismissed ? "Ignorée" : "Traité"}</button>`
+            : `<button type="button" data-action="apply" data-index="${index}">Appliquer</button>
+            <button type="button" class="dismiss" data-action="dismiss" data-index="${index}">Ignorer</button>`;
           return `
           <li class="issue${issue.done ? " applied" : ""}" data-index="${index}">
             <p class="diff"><del>${escapeHtml(issue.original)}</del> → <ins>${escapeHtml(issue.correction)}</ins></p>
             <p class="explanation">${escapeHtml(issue.explanation)}</p>
-            ${button}
+            ${buttons}
           </li>`;
         })
         .join("");
@@ -495,6 +497,9 @@
       case "apply":
         applyIssue(Number(target.dataset.index));
         break;
+      case "dismiss":
+        dismissIssue(Number(target.dataset.index));
+        break;
       case "apply-all":
         session.issues.forEach((issue, index) => !issue.done && isError(issue) && applyIssue(index));
         break;
@@ -514,17 +519,38 @@
     issue.done = true;
     renderUnderlines();
 
+    markHandled(
+      index,
+      applied ? "Appliqué" : "Introuvable",
+      applied ? "" : "Ce passage a changé depuis la vérification.",
+    );
+  }
+
+  // Drops an issue the author disagrees with: no change to the text, and it leaves the history.
+  function dismissIssue(index) {
+    const issue = session?.issues[index];
+    if (!issue || issue.done) return;
+    issue.done = true;
+    issue.dismissed = true;
+    if (hoveredIndex === index) hoveredIndex = -1;
+    renderUnderlines();
+    chrome.runtime
+      .sendMessage({ type: "proofmate:dismiss", original: issue.original, correction: issue.correction })
+      .catch(() => {});
+    markHandled(index, "Ignorée");
+  }
+
+  // Greys out a handled issue in the panel and refreshes the "Tout corriger" count.
+  function markHandled(index, label, title = "") {
     const item = ui.panel.querySelector(`li[data-index="${index}"]`);
     if (!item) return;
-    const button = item.querySelector("button");
+    const [button, ...others] = item.querySelectorAll("button");
+    others.forEach((other) => other.remove());
     button.disabled = true;
-    if (applied) {
-      item.classList.add("applied");
-      button.textContent = "Appliqué";
-    } else {
-      button.textContent = "Introuvable";
-      button.title = "Ce passage a changé depuis la vérification.";
-    }
+    button.removeAttribute("data-action");
+    button.textContent = label;
+    if (title) button.title = title;
+    else item.classList.add("applied");
 
     const applyAll = ui.panel.querySelector('[data-action="apply-all"]');
     if (!applyAll) return;

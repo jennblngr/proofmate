@@ -79,9 +79,11 @@ function knownRules(history) {
     .map(([rule]) => rule);
 }
 
+const historyKey = (issue) => `${issue.original}\u0000${issue.correction}`;
+
 async function recordHistory(history, issues) {
   const now = Date.now();
-  const key = (issue) => `${issue.original}\u0000${issue.correction}`;
+  const key = historyKey;
   const recent = new Set(history.filter((entry) => now - entry.date < HISTORY_DEDUPE_MS).map(key));
   const fresh = issues
     .filter((issue) => !recent.has(key(issue)))
@@ -110,6 +112,16 @@ function isPeriodNextToEmoji({ original, correction }) {
   const compact = (value) => value.replace(/\s+/g, "");
   const fixed = compact(correction);
   return fixed === compact(`${body}${emoji}.`) || fixed === compact(`${body}.${emoji}`);
+}
+
+// The author dismissed an issue in the panel: it must not count as one of their mistakes.
+// Only the entry recorded for it (same passage and correction, within the dedupe window) goes.
+async function forgetDismissed(issue) {
+  const { history } = await chrome.storage.local.get({ history: [] });
+  const since = Date.now() - HISTORY_DEDUPE_MS;
+  const target = historyKey(issue);
+  const kept = history.filter((entry) => entry.date < since || historyKey(entry) !== target);
+  if (kept.length !== history.length) await chrome.storage.local.set({ history: kept });
 }
 
 class ProofmateError extends Error {
@@ -191,6 +203,9 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
       (error) => sendResponse({ ok: false, error: error.message, code: error.code }),
     );
     return true; // keep the channel open for the async response
+  }
+  if (message?.type === "proofmate:dismiss" && typeof message.original === "string") {
+    forgetDismissed(message);
   }
   if (message?.type === "proofmate:open-options") {
     chrome.runtime.openOptionsPage();
